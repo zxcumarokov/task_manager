@@ -25,14 +25,14 @@ class ITaskStorage(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete_task(self, task: Task, task_id: int) -> None:
+    def delete_task(self, task_id: int) -> None:
         """
         Delete a task
         """
         raise NotImplementedError
 
     @abstractmethod
-    def get_task_by_id(self, id: int) -> Task:
+    def get_task_by_id(self, task_id: int) -> Task:
         """
         Get a task by ID
         """

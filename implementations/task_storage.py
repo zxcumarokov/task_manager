@@ -1,6 +1,6 @@
 import os
 
-import psycopg
+import asyncpg
 from dotenv import load_dotenv
 
 from abs.abc_task_storage import ITaskStorage
@@ -14,37 +14,28 @@ class TaskStorage(ITaskStorage):
         if not self.database_url:
             raise ValueError("DATABASE_URL не указан в .env файле")
 
-        # Проверяем, если формат URI, преобразуем в параметры
-        if self.database_url.startswith("postgres://"):
-            self.database_url = self._convert_uri_to_params(self.database_url)
+    async def _connect(self):
+        """Создает асинхронное подключение к базе данных."""
+        return await asyncpg.connect(self.database_url)
 
-    @staticmethod
-    def _convert_uri_to_params(uri: str) -> str:
-        """Конвертирует строку подключения из формата URI в строку параметров."""
-        from psycopg.conninfo import conninfo_to_dict, make_conninfo
-
-        conninfo = make_conninfo(uri)
-        params_dict = conninfo_to_dict(conninfo)
-        return " ".join(f"{key}={value}" for key, value in params_dict.items())
-
-    def create_task(self, task: Task) -> int:
+    async def create_task(self, task: Task) -> int:
         """Создает задачу в базе данных и возвращает ее ID."""
-        with psycopg.connect(self.database_url) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO tasks (title, description, status)
-                    VALUES (%s, %s, %s)
-                    RETURNING id
-                    """,
-                    (task.title, task.description, task.status),
-                )
-                # Получаем только ID новой записи
-                task_id = cursor.fetchone()[0]
-                conn.commit()
-                return task_id
+        conn = await self._connect()
+        try:
+            # Выполняем вставку и получаем ID
+            query = """
+                INSERT INTO tasks (title, description, status)
+                VALUES ($1, $2, $3)
+                RETURNING id
+            """
+            task_id = await conn.fetchval(
+                query, task.title, task.description, task.status
+            )
+            return task_id
+        finally:
+            await conn.close()
 
-    def upgrade_task(
+    async def upgrade_task(
         self,
         task_id: int,
         title: str,
@@ -59,13 +50,13 @@ class TaskStorage(ITaskStorage):
         updates = []
         values = []
         if title:
-            updates.append("title = %s")
+            updates.append("title = $1")
             values.append(title)
         if description:
-            updates.append("description = %s")
+            updates.append("description = $2")
             values.append(description)
         if status:
-            updates.append("status = %s")
+            updates.append("status = $3")
             values.append(status)
 
         # Добавляем ID задачи в конец списка значений
@@ -74,40 +65,39 @@ class TaskStorage(ITaskStorage):
         query = f"""
         UPDATE tasks
         SET {", ".join(updates)}
-        WHERE id = %s
+        WHERE id = $4
         """
 
-        with psycopg.connect(self.database_url) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(query, values)
-                conn.commit()
+        conn = await self._connect()
+        try:
+            await conn.execute(query, *values)
+        finally:
+            await conn.close()
 
-    def delete_task(self, task_id: int) -> None:
+    async def delete_task(self, task_id: int) -> None:
         """Удаляет задачу из базы данных по ID."""
-        with psycopg.connect(self.database_url) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    DELETE FROM tasks
-                    WHERE id = %s
-                    """,
-                    (task_id,),
-                )
-                conn.commit()
+        conn = await self._connect()
+        try:
+            query = """
+            DELETE FROM tasks
+            WHERE id = $1
+            """
+            await conn.execute(query, task_id)
+        finally:
+            await conn.close()
 
-    def get_task_by_id(self, task_id: int) -> Task:
+    async def get_task_by_id(self, task_id: int) -> Task:
         """Получает задачу из базы данных по ID."""
-        with psycopg.connect(self.database_url, row_factory=class_row(Task)) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT id, title, description, status
-                    FROM tasks
-                    WHERE id = %s
-                    """,
-                    (task_id,),
-                )
-                task = cursor.fetchone()
-                if not task:
-                    raise ValueError(f"Задача с ID {task_id} не найдена.")
-                return task
+        conn = await self._connect()
+        try:
+            query = """
+            SELECT id, title, description, status
+            FROM tasks
+            WHERE id = $1
+            """
+            row = await conn.fetchrow(query, task_id)
+            if not row:
+                raise ValueError(f"Задача с ID {task_id} не найдена.")
+            return Task(**row)  # Преобразуем данные в объект Task
+        finally:
+            await conn.close()
