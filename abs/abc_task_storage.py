@@ -5,35 +5,36 @@ from models import Task
 
 class ITaskStorage(ABC):
     @abstractmethod
-    def create_task(self, task: Task):
+    async def create_task(self, task: Task) -> int:
         """
-        Create a new task and return its ID
+        Создает новую задачу и возвращает её ID.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def upgrade_task(
+    async def upgrade_task(
         self,
         task_id: int,
-        title: str,
-        description: str,
-        status: str,
+        title: str | None,
+        description: str | None,
+        status: str | None,
     ) -> None:
         """
-        Update a task
+        Обновляет задачу в базе данных.
+        Можно передать одно или несколько полей (title, description, status).
         """
         raise NotImplementedError
 
     @abstractmethod
-    def delete_task(self, task_id: int) -> None:
+    async def delete_task(self, task_id: int) -> None:
         """
-        Delete a task
+        Удаляет задачу из базы данных.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def get_task_by_id(self, task_id: int) -> Task:
+    async def get_task_by_id(self, task_id: int) -> Task:
         """
-        Get a task by ID
+        Получает задачу по ID из базы данных.
         """
         raise NotImplementedError

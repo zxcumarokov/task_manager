@@ -1,3 +1,4 @@
+import logging
 import os
 
 import asyncpg
@@ -5,6 +6,8 @@ from dotenv import load_dotenv
 
 from abs.abc_task_storage import ITaskStorage
 from models import Task
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class TaskStorage(ITaskStorage):
@@ -51,16 +54,16 @@ class TaskStorage(ITaskStorage):
         values = []
         if title:
             updates.append("title = $1")
-            values.append(title)
+            values.append(str(title))
         if description:
             updates.append("description = $2")
-            values.append(description)
+            values.append(str(description))
         if status:
             updates.append("status = $3")
-            values.append(status)
+            values.append(str(status))
 
         # Добавляем ID задачи в конец списка значений
-        values.append(task_id)
+        values.append(int(task_id))
 
         query = f"""
         UPDATE tasks
@@ -70,7 +73,12 @@ class TaskStorage(ITaskStorage):
 
         conn = await self._connect()
         try:
+            logging.debug(f"Executing query: {query} with values: {values}")
             await conn.execute(query, *values)
+            logging.debug("Task updated successfully.")
+        except Exception as e:
+            logging.error(f"Error while updating task: {e}")
+            raise Exception(f"An error occurred while updating task: {e}")
         finally:
             await conn.close()
 

@@ -23,7 +23,7 @@ class TaskRouter:
             task = await self.task_storage.get_task_by_id(task_id)
             task_dict = task.model_dump()  # Преобразуем модель в словарь
             return task_dict
-        except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
-        except Exception as e:
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Task not found")
+        except Exception:
             raise HTTPException(status_code=500, detail="An unexpected error occurred")
