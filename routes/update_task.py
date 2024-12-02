@@ -5,9 +5,9 @@ from abs import ITaskStorage
 
 
 class TaskUpdate(BaseModel):
-    title: str | None
-    description: str | None
-    status: str | None
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
 
 
 class UpdateTaskRouter:

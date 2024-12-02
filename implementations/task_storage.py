@@ -41,9 +41,9 @@ class TaskStorage(ITaskStorage):
     async def upgrade_task(
         self,
         task_id: int,
-        title: str,
-        description: str,
-        status: str,
+        title: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
     ) -> None:
         """Обновляет задачу в базе данных. Поля title, description и status необязательны."""
         if not (title or description or status):
@@ -52,28 +52,34 @@ class TaskStorage(ITaskStorage):
         # Формируем динамическую часть запроса
         updates = []
         values = []
-        if title:
-            updates.append("title = $1")
-            values.append(str(title))
-        if description:
-            updates.append("description = $2")
-            values.append(str(description))
-        if status:
-            updates.append("status = $3")
-            values.append(str(status))
+
+        # Добавляем параметры только если они не None
+        if title is not None:
+            updates.append("title = ${}".format(len(values) + 1))  # Следующий индекс
+            values.append(title)
+        if description is not None:
+            updates.append(
+                "description = ${}".format(len(values) + 1)
+            )  # Следующий индекс
+            values.append(description)
+        if status is not None:
+            updates.append("status = ${}".format(len(values) + 1))  # Следующий индекс
+            values.append(status)
 
         # Добавляем ID задачи в конец списка значений
         values.append(int(task_id))
 
+        # Формируем запрос
         query = f"""
         UPDATE tasks
         SET {", ".join(updates)}
-        WHERE id = $4
+        WHERE id = ${len(values)}  -- Последний индекс будет ID
         """
 
         conn = await self._connect()
         try:
             logging.debug(f"Executing query: {query} with values: {values}")
+            # Выполняем запрос с параметрами
             await conn.execute(query, *values)
             logging.debug("Task updated successfully.")
         except Exception as e:
