@@ -82,3 +82,6 @@ migrate -source file://migrations -database "postgres://username:password@localh
 Заключение
 С помощью migrate CLI вы можете легко создавать и применять миграции. В вашем случае, чтобы добавить таблицу users, вы создаете миграцию через migrate create, редактируете сгенерированные файлы с SQL-кодом и применяете их к базе данных.
 $$
+'''
+migrate -path migrations -database "postgres://ivan:8798@localhost:9876/users?sslmode=disable" down
+'''
