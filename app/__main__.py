@@ -13,9 +13,6 @@ from routes.create_user_and_tokens import CreateUserAndTokensRouter
 from routes.delete_task import DeleteTaskRouter
 from routes.task_routes import TaskRouter
 from routes.update_task import UpdateTaskRouter
-from stubs.create_token import CreateTokenStub
-from stubs.encrypter_stub import EncrypterStub
-from stubs.user_storage_stub import UserStorageStub
 
 app = FastAPI()
 

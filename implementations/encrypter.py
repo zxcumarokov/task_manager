@@ -11,7 +11,9 @@ class GPGEncrypter(IEncrypter):
         Инициализация шифровщика с использованием GPG.
         :param gpg_home: Директория для хранения GPG-ключей.
         """
-        self.gpg = gnupg.GPG(gnupghome=gpg_home)  # Указываем директорию с ключами
+        self.gpg = gnupg.GPG(
+            homedir=gpg_home, binary="/usr/local/bin/gpg"
+        )  # Указываем директорию с ключами
         self.key_id = os.getenv("GPG_KEY_ID")  # Загружаем идентификатор ключа из .env
         if not self.key_id:
             raise ValueError("GPG_KEY_ID не указан в .env файле")
