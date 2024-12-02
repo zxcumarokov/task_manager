@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from abs import ICreateToken, IUserStorage
+from abs import ITockenStorage, IUserStorage
 from implementations.encrypter import GPGEncrypter
 
 
@@ -18,7 +18,7 @@ class RefreshTokenRouter:
         self,
         user_storage: IUserStorage,
         encrypter: GPGEncrypter,
-        create_token: ICreateToken,
+        token_storage: ITockenStorage,
         expire_days: int,
     ):
         self.router = APIRouter()
@@ -29,7 +29,7 @@ class RefreshTokenRouter:
         )
         self.user_storage = user_storage
         self.encrypter = encrypter
-        self.create_token = create_token
+        self.tocken_storage = token_storage
         self.expire_days = expire_days
 
     async def get_refresh_token(self, request: RefreshTokenRequest):
@@ -47,7 +47,7 @@ class RefreshTokenRouter:
 
         expire_date_time = datetime.now() + timedelta(days=self.expire_days)
 
-        refresh_token = self.create_token.create_token(
+        refresh_token = self.tocken_storage.create_token(
             username=user.username,
             expire_date_time=expire_date_time,
         )

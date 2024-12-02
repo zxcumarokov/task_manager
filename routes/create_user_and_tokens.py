@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from abs import ITokenStorage, IUserStorage
+from abs import ITockenStorage, IUserStorage
 from implementations.encrypter import GPGEncrypter
 from models.user import User
 
@@ -17,9 +17,8 @@ class CreateUserAndTokensRouter:
     def __init__(
         self,
         user_storage: IUserStorage,
-        token_storage: ITokenStorage,
+        token_storage: ITockenStorage,
         encrypter: GPGEncrypter,
-        create_token,  # Экземпляр ICreateToken
         expire_days: int,
     ):
         self.router = APIRouter()
@@ -31,7 +30,6 @@ class CreateUserAndTokensRouter:
         self.user_storage = user_storage
         self.token_storage = token_storage
         self.encrypter = encrypter
-        self.create_token = create_token
         self.expire_days = expire_days
 
     async def create_user_and_tokens(self, request: CreateUserRequest):
@@ -57,11 +55,11 @@ class CreateUserAndTokensRouter:
             # Генерация токенов
             expire_date_time = datetime.now() + timedelta(days=self.expire_days)
 
-            refresh_token = self.create_token.create_token(
+            refresh_token = self.token_storage.create_token(
                 username=user.username,
                 expire_date_time=expire_date_time,
             )
-            access_token = self.create_token.create_token(
+            access_token = self.token_storage.create_token(
                 username=user.username,
                 expire_date_time=datetime.now() + timedelta(hours=1),  # На 1 час
             )

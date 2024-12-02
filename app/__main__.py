@@ -1,6 +1,12 @@
+import os  # noqa
+
+import dotenv  # noqa
 from fastapi import FastAPI
 
+from implementations.encrypter import GPGEncrypter
 from implementations.task_storage import TaskStorage
+from implementations.token_storage import TokenStorage
+from implementations.user_storage import UserStorage
 from routes import HelloWorldRouter, RefreshTokenRouter
 from routes.create_task_route import CreateTaskRouter
 from routes.create_user_and_tokens import CreateUserAndTokensRouter
@@ -9,22 +15,24 @@ from routes.task_routes import TaskRouter
 from routes.update_task import UpdateTaskRouter
 from stubs.create_token import CreateTokenStub
 from stubs.encrypter_stub import EncrypterStub
-from stubs.token_storage_stub import TokenStorageStub
 from stubs.user_storage_stub import UserStorageStub
 
 app = FastAPI()
 
 # Зависимости для Task-related маршрутов
 task_storage = TaskStorage()
-
+gpg_home = os.getenv("GPG_HOME")
+gpg_home = str(gpg_home)
+database_url = os.getenv("DATABASE_URL")
+database_url = str(database_url)
 # Добавляем маршруты для задач
 app.include_router(HelloWorldRouter().router)
 
 app.include_router(
     RefreshTokenRouter(
-        user_storage=UserStorageStub(),
-        encrypter=EncrypterStub(),
-        create_token=CreateTokenStub(),
+        user_storage=UserStorage(),
+        encrypter=GPGEncrypter(gpg_home=gpg_home),
+        token_storage=TokenStorage(database_url=database_url),
         expire_days=100,
     ).router
 )
@@ -54,10 +62,9 @@ app.include_router(
 )
 
 # Зависимости для CreateUserAndTokensRouter
-user_storage = UserStorageStub()
-token_storage = TokenStorageStub()
-encrypter = EncrypterStub()
-create_token = CreateTokenStub()
+user_storage = UserStorage()
+token_storage = TokenStorage(database_url=database_url)
+encrypter = GPGEncrypter(gpg_home=gpg_home)
 expire_days = 30
 
 # Добавляем маршрут для создания пользователя и токенов
@@ -66,7 +73,6 @@ app.include_router(
         user_storage=user_storage,
         token_storage=token_storage,
         encrypter=encrypter,
-        create_token=create_token,
         expire_days=expire_days,
     ).router
 )

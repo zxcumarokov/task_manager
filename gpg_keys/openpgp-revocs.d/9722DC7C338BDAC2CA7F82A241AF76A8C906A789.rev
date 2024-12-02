@@ -1,0 +1,34 @@
+Это сертификат отзыва ключа OpenPGP:
+
+pub   rsa3072 2024-12-01 [S]
+      9722DC7C338BDAC2CA7F82A241AF76A8C906A789
+uid          ivan (dsfdfdsaefsdfds) <sumarokovj@gmail.com>
+
+Сертификат отзыва - своего рода "уничтожитель", с его помощью можно
+публично объявить, что ключ больше не должен применяться. После публикации
+такой сертификат взять назад невозможно.
+
+Пользуйтесь им для отзыва этого ключа в случае раскрытия или потери
+секретного ключа. Однако если секретный ключ доступен, лучше создать
+новый сертификат с указанием причины отзыва. Подробности см. в описании
+команды gpg "--generate-revocation" в руководстве по GnuPG.
+
+Чтобы избежать случайного применения этого файла, перед 5 дефисами
+вставлено двоеточие. Удалите это двоеточие в текстовом редакторе
+перед импортированием и публикацией этого сертификата отзыва.
+
+:-----BEGIN PGP PUBLIC KEY BLOCK-----
+Comment: This is a revocation certificate
+
+iQG2BCABCAAgFiEElyLcfDOL2sLKf4KiQa92qMkGp4kFAmdMzSYCHQAACgkQQa92
+qMkGp4kUYwv/WS2bau8oxe5eXJkL4oFiq0/fqvU6H7ImTH6Rv+y72mxm8IlJz8BS
+RHP4RZxe/zKskkb3g3wWiKnWTm4gag56CHi/re8x4pg3B+w7uzuAAZlu/iI/7o6B
+yNfaTm2Hfjj0dY37yh/M/H7FYT1hY5qB2jBPGZdEP1qehq3mjgpSwkc1yQ0Y1lbW
+bwz5tA+051iogX496WrdNFQXoH2pmsqRQF3J+rz5E9x3GdATJ/gl3JFz5kRTC86L
+S5/yEW69oyQjtHeW6igP1hXZwjOLRIVZpAFw+VhyPeg5T5zUJjFPx74k71Bo/ntT
+dZnwwuH3kfeTnu/vfT0UtTNY3NZxUZfq+vyRUqqlC2Ar0xsWhTP22agmg1Yn7saA
+4cPZ7y4bDkFfdGUo114cOqulprfOytPoMCX6hGqgXfih42+qGlXrbUYhh9WHi8hy
+xe742PHm51JBtvD55lLj8dWUuRlppuWYzA92jSbrGhor5fj/wpWf5MIR88a+mApD
+zzsjhQzZCyHH
+=qoXt
+-----END PGP PUBLIC KEY BLOCK-----
