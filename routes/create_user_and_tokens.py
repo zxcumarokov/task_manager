@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
@@ -6,6 +7,13 @@ from pydantic import BaseModel
 from abs import ITockenStorage, IUserStorage
 from implementations.encrypter import GPGEncrypter
 from models.user import User
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 class CreateUserRequest(BaseModel):
@@ -34,54 +42,86 @@ class CreateUserAndTokensRouter:
 
     async def create_user_and_tokens(self, request: CreateUserRequest):
         """Создает пользователя и токены."""
+        logger.info("Запрос на создание пользователя: %s", request.username)
+
         try:
             # Проверяем, существует ли пользователь
-            existing_user = await self.user_storage.get_user(request.username)
-            if existing_user:
-                raise HTTPException(status_code=400, detail="User already exists")
-
-            # Шифруем пароль
-            encrypted_password = self.encrypter.encrypt(request.password)
-
-            # Создаем пользователя
-            user = User(
-                username=request.username,
-                encrypted_password=encrypted_password,
-                encrypted_refresh_token=None,
-                encrypted_access_token=None,
+            logger.info(
+                "Проверяем, существует ли пользователь с именем: %s", request.username
             )
-            await self.user_storage.create_user(user)
+            try:
+                existing_user = await self.user_storage.get_user(request.username)
+                logger.info(
+                    "Пользователь %s найден: продолжаем обновление токенов",
+                    request.username,
+                )
+            except ValueError:
+                logger.info(
+                    "Пользователь %s не найден: создаем нового", request.username
+                )
+
+                # Шифруем пароль
+                logger.info(
+                    "Шифруем пароль для нового пользователя: %s", request.username
+                )
+                encrypted_password = self.encrypter.encrypt(request.password)
+
+                # Создаем нового пользователя
+                user = User(
+                    username=request.username,
+                    encrypted_password=encrypted_password,
+                    encrypted_refresh_token=None,
+                    encrypted_access_token=None,
+                )
+                await self.user_storage.create_user(user)
+                logger.info("Новый пользователь %s успешно создан", request.username)
+
+                existing_user = user  # Используем нового пользователя
 
             # Генерация токенов
+            logger.info("Генерация токенов для пользователя: %s", request.username)
             expire_date_time = datetime.now() + timedelta(days=self.expire_days)
 
             refresh_token = self.token_storage.create_token(
-                username=user.username,
+                username=existing_user.username,
                 expire_date_time=expire_date_time,
             )
             access_token = self.token_storage.create_token(
-                username=user.username,
+                username=existing_user.username,
                 expire_date_time=datetime.now() + timedelta(hours=1),  # На 1 час
+            )
+            logger.info(
+                "Токены успешно сгенерированы для пользователя: %s", request.username
             )
 
             # Шифруем токены
-            encrypted_refresh_token = self.encrypter.encrypt(refresh_token)
-            encrypted_access_token = self.encrypter.encrypt(access_token)
+            logger.info("Шифруем токены для пользователя: %s", request.username)
+            encrypted_refresh_token = self.encrypter.encrypt(await refresh_token)
+            encrypted_access_token = self.encrypter.encrypt(await access_token)
 
             # Обновляем данные пользователя
-            user.encrypted_refresh_token = encrypted_refresh_token
-            user.encrypted_access_token = encrypted_access_token
+            existing_user.encrypted_refresh_token = encrypted_refresh_token
+            existing_user.encrypted_access_token = encrypted_access_token
 
             # Сохраняем токены в базе данных
-            await self.token_storage.save_tokens(user)
+            logger.info("Сохраняем токены для пользователя: %s", request.username)
+            await self.token_storage.save_tokens(existing_user)
+            logger.info(
+                "Токены успешно сохранены для пользователя: %s", request.username
+            )
 
             return {
                 "message": "User and tokens created successfully",
                 "user": {
-                    "username": user.username,
+                    "username": existing_user.username,
                     "encrypted_refresh_token": encrypted_refresh_token,
                     "encrypted_access_token": encrypted_access_token,
                 },
             }
         except Exception as e:
+            logger.error(
+                "Ошибка при создании пользователя или токенов: %s",
+                str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
