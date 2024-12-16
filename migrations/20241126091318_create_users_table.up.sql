@@ -1,6 +1,6 @@
--- 000003_create_users_table.up.sq
 CREATE TABLE users (
-    username VARCHAR(255) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
     encrypted_password TEXT NOT NULL,
     encrypted_refresh_token TEXT,
     encrypted_access_token TEXT

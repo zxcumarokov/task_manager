@@ -51,7 +51,10 @@ class TaskStorage(ITaskStorage):
 
         # Формируем динамическую часть запроса
         updates = []
-        values = []
+
+        values: list[
+            str | int
+        ] = []  # Используйте str | int, если список содержит оба типа
 
         # Добавляем параметры только если они не None
         if title is not None:

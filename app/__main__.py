@@ -1,15 +1,16 @@
 import os  # noqa
 
-import dotenv  # noqa
 from fastapi import FastAPI
 
 from implementations.encrypter import GPGEncrypter
 from implementations.task_storage import TaskStorage
 from implementations.token_storage import TokenStorage
 from implementations.user_storage import UserStorage
-from routes import HelloWorldRouter, RefreshTokenRouter
+from routes import HelloWorldRouter
+from routes.auth_login import create_login_router
+from routes.auth_refresh import create_refresh_router
+from routes.auth_register import create_user_router
 from routes.create_task_route import CreateTaskRouter
-from routes.create_user_and_tokens import CreateUserAndTokensRouter
 from routes.delete_task import DeleteTaskRouter
 from routes.task_routes import TaskRouter
 from routes.update_task import UpdateTaskRouter
@@ -22,17 +23,15 @@ gpg_home = os.getenv("GPG_HOME")
 gpg_home = str(gpg_home)
 database_url = os.getenv("DATABASE_URL")
 database_url = str(database_url)
+
+# Зависимости для маршрутов аутентификации
+user_storage = UserStorage()
+token_storage = TokenStorage(database_url=database_url)
+encrypter = GPGEncrypter(gpg_home=gpg_home)
+expire_days = 30
+
 # Добавляем маршруты для задач
 app.include_router(HelloWorldRouter().router)
-
-app.include_router(
-    RefreshTokenRouter(
-        user_storage=UserStorage(),
-        encrypter=GPGEncrypter(gpg_home=gpg_home),
-        token_storage=TokenStorage(database_url=database_url),
-        expire_days=100,
-    ).router
-)
 
 app.include_router(
     TaskRouter(
@@ -58,18 +57,33 @@ app.include_router(
     ).router
 )
 
-# Зависимости для CreateUserAndTokensRouter
+# Зависимости для маршрутов аутентификации
 user_storage = UserStorage()
 token_storage = TokenStorage(database_url=database_url)
 encrypter = GPGEncrypter(gpg_home=gpg_home)
 expire_days = 30
 
-# Добавляем маршрут для создания пользователя и токенов
+# Добавляем маршруты для регистрации пользователя, входа и обновления токенов
 app.include_router(
-    CreateUserAndTokensRouter(
+    create_user_router(
         user_storage=user_storage,
+        encrypter=encrypter,
+    )
+)
+
+app.include_router(
+    create_login_router(
         token_storage=token_storage,
+        user_storage=user_storage,
         encrypter=encrypter,
         expire_days=expire_days,
-    ).router
+    )
+)
+
+app.include_router(
+    create_refresh_router(
+        token_storage=token_storage,
+        user_storage=user_storage,
+        encrypter=encrypter,
+    )
 )

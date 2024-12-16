@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import asyncpg
 import jwt
@@ -20,12 +20,14 @@ class TokenStorage(ITockenStorage):
         """Создает асинхронное подключение к базе данных."""
         return await asyncpg.connect(self.database_url)
 
-    async def create_token(self, username: str, expire_date_time: datetime) -> str:
+    async def create_access_token(
+        self, username: str, expire_date_time: datetime
+    ) -> str:
         """
-        Создает токен для пользователя.
+        Создает access токен для пользователя.
         :param username: Имя пользователя
         :param expire_date_time: Время истечения токена
-        :return: Строка токена
+        :return: Строка access токена
         """
         payload = {
             "username": username,  # Имя пользователя
@@ -37,9 +39,30 @@ class TokenStorage(ITockenStorage):
         if not SECRET_KEY:
             raise ValueError("SECRET_KEY не указан в .env файле")
 
-        # Генерация токена
+        # Генерация access токена
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
         return token
+
+    async def create_refresh_token(self, username: str) -> str:
+        """
+        Создает refresh токен для пользователя.
+        :param username: Имя пользователя
+        :return: Строка refresh токена
+        """
+        payload = {
+            "username": username,  # Имя пользователя
+            "exp": datetime.utcnow()
+            + timedelta(days=30),  # Время истечения токена (например, через 30 дней)
+        }
+
+        load_dotenv()
+        SECRET_KEY = os.getenv("SECRET_KEY")
+        if not SECRET_KEY:
+            raise ValueError("SECRET_KEY не указан в .env файле")
+
+        # Генерация refresh токена
+        refresh_token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+        return refresh_token
 
     async def save_tokens(self, user: User) -> None:
         """Сохраняет токены пользователя в базу данных."""
