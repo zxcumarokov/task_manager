@@ -14,7 +14,10 @@ class ITockenStorage(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def create_refresh_token(self, username: str) -> str:
+    async def create_refresh_token(
+        self,
+        username: str,
+    ) -> str:
         """
         Создает refresh токен с более длительным временем жизни (например, через несколько дней).
         :param username: Имя пользователя

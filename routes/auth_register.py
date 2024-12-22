@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from abs import IUserStorage
-from implementations.encrypter import GPGEncrypter
+from implementations.encrypter import FernetEncrypter
 from models.user import User
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ class CreateUserRequest(BaseModel):
     password: str
 
 
-def create_user_router(user_storage: IUserStorage, encrypter: GPGEncrypter):
+def create_user_router(user_storage: IUserStorage, encrypter: FernetEncrypter):
     router = APIRouter()
 
     @router.post("/auth/register")

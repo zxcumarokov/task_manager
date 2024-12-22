@@ -1,7 +1,7 @@
 import logging
 import os
 
-import gnupg
+from cryptography.fernet import Fernet
 
 from abs import IEncrypter
 
@@ -10,19 +10,29 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-class GPGEncrypter(IEncrypter):
-    def __init__(self, gpg_home: str):
+class FernetEncrypter(IEncrypter):
+    KEY_FILE = "fernet.key"  # Имя файла для хранения ключа
+
+    def __init__(self):
         """
-        Инициализация шифровщика с использованием GPG.
-        :param gpg_home: Директория для хранения GPG-ключей.
+        Инициализация шифровщика с использованием Fernet.
+        Если ключ отсутствует, он будет загружен из файла или создан.
         """
-        self.gpg = gnupg.GPG(
-            homedir=gpg_home, binary="/usr/local/bin/gpg"
-        )  # Указываем директорию с ключами
-        self.key_id = os.getenv("GPG_KEY_ID")  # Загружаем идентификатор ключа из .env
-        if not self.key_id:
-            raise ValueError("GPG_KEY_ID не указан в .env файле")
-        logger.debug(f"GPG ключ загружен: {self.key_id}")
+        if os.path.exists(self.KEY_FILE):
+            # Загружаем ключ из файла
+            with open(self.KEY_FILE, "rb") as file:
+                self.key = file.read()
+            logger.debug("Ключ Fernet загружен из файла.")
+        else:
+            # Генерация нового ключа и сохранение его в файл
+            self.key = Fernet.generate_key()
+            with open(self.KEY_FILE, "wb") as file:
+                file.write(self.key)
+            logger.warning(
+                f"Ключ Fernet не найден. Создан и сохранён в файл {self.KEY_FILE}"
+            )
+
+        self.fernet = Fernet(self.key)
 
     def encrypt(self, password: str) -> str:
         """
@@ -30,13 +40,11 @@ class GPGEncrypter(IEncrypter):
         :param password: Пароль для шифрования.
         :return: Зашифрованная строка.
         """
-        logger.debug(f"Начало шифрования пароля: {password}")
-        encrypted_data = self.gpg.encrypt(password, self.key_id)
-        if not encrypted_data.ok:
-            logger.error(f"Ошибка шифрования: {encrypted_data.status}")
-            raise ValueError(f"Ошибка шифрования: {encrypted_data.status}")
-        logger.debug(f"Пароль зашифрован: {str(encrypted_data)}")
-        return str(encrypted_data)  # Возвращаем зашифрованный текст
+        logger.debug(f"Начало шифрования пароля.")
+        encrypted_data = self.fernet.encrypt(password.encode())
+        encrypted_str = encrypted_data.decode()
+        logger.debug(f"Пароль зашифрован.")
+        return encrypted_str
 
     def decrypt(self, encrypted_password: str) -> str:
         """
@@ -44,13 +52,12 @@ class GPGEncrypter(IEncrypter):
         :param encrypted_password: Зашифрованная строка.
         :return: Исходный пароль.
         """
-        logger.debug(f"Начало дешифрования сообщения: {encrypted_password}")
-        logger.debug(f"Используемый GPG ключ: {self.key_id}")
-
-        decrypted_data = self.gpg.decrypt(encrypted_password)
-        if not decrypted_data.ok:
-            logger.error(f"Ошибка дешифрования: {decrypted_data.status}")
-            raise ValueError(f"Ошибка дешифрования: {decrypted_data.status}")
-
-        logger.debug(f"Дешифрованное сообщение: {str(decrypted_data)}")
-        return str(decrypted_data)
+        logger.debug(f"Начало дешифрования сообщения.")
+        try:
+            decrypted_data = self.fernet.decrypt(encrypted_password.encode())
+            decrypted_str = decrypted_data.decode()
+            logger.debug(f"Дешифрованное сообщение.")
+            return decrypted_str
+        except Exception as e:
+            logger.error(f"Ошибка при дешифровке: {e}")
+            raise ValueError("Invalid encrypted message") from e

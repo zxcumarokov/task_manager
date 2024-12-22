@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from abs import ITockenStorage, IUserStorage
-from implementations.encrypter import GPGEncrypter
+from implementations.encrypter import FernetEncrypter
 
 
 class RefreshTokenRequest(BaseModel):
@@ -17,7 +17,7 @@ class RefreshTokenRouter:
     def __init__(
         self,
         user_storage: IUserStorage,
-        encrypter: GPGEncrypter,
+        encrypter: FernetEncrypter,
         token_storage: ITockenStorage,
         expire_days: int,
     ):
@@ -47,7 +47,7 @@ class RefreshTokenRouter:
 
         expire_date_time = datetime.now() + timedelta(days=self.expire_days)
 
-        refresh_token = self.tocken_storage.create_token(
+        refresh_token = self.tocken_storage.create_refresh_token(
             username=user.username,
             expire_date_time=expire_date_time,
         )

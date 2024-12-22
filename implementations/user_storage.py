@@ -75,3 +75,24 @@ class UserStorage(IUserStorage):
             )
         finally:
             await conn.close()
+
+    async def update_tokens(
+        self, username: str, encrypted_access_token: str, encrypted_refresh_token: str
+    ) -> None:
+        """Обновляет токены пользователя в базе данных."""
+        conn = await self._connect()
+        try:
+            query = """
+            UPDATE users
+            SET encrypted_access_token = $1, 
+                encrypted_refresh_token = $2
+            WHERE username = $3
+            """
+            await conn.execute(
+                query,
+                encrypted_access_token,
+                encrypted_refresh_token,
+                username,
+            )
+        finally:
+            await conn.close()

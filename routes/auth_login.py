@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from abs import ITockenStorage, IUserStorage
-from implementations.encrypter import GPGEncrypter
+from implementations.encrypter import FernetEncrypter
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class LoginRequest(BaseModel):
 def create_login_router(
     user_storage: IUserStorage,
     token_storage: ITockenStorage,
-    encrypter: GPGEncrypter,
+    encrypter: FernetEncrypter,
     expire_days: int,
 ):
     router = APIRouter()
@@ -37,7 +37,20 @@ def create_login_router(
             if not encrypter.decrypt(user.encrypted_password) == password:
                 raise HTTPException(status_code=401, detail="Invalid credentials")
 
-            # Создание токенов с заданным временем жизни
+            # Шаг 1: Проверяем, существуют ли уже сохранённые токены для пользователя
+            if user.encrypted_refresh_token and user.encrypted_access_token:
+                logger.debug(
+                    f"Используем существующие токены для пользователя {username}"
+                )
+                # Используем существующие токены
+                return {
+                    "message": "Login successful",
+                    "username": user.username,
+                    "encrypted_refresh_token": user.encrypted_refresh_token,
+                    "encrypted_access_token": user.encrypted_access_token,
+                }
+
+            # Шаг 2: Создание токенов с заданным временем жизни, если токены ещё не созданы
             expire_access_token = datetime.now() + timedelta(hours=1)
             expire_refresh_token = datetime.now() + timedelta(days=expire_days)
 

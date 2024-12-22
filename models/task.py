@@ -1,8 +1,11 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
 class Task(BaseModel):
-    id: int | None = None
-    title: str | None = None
-    description: str | None = None
-    status: str | None = None
+    title: str
+    description: str
+    status: str
+    user_id: Optional[int] = None  # Это будет заполняться в процессе создания
+    id: Optional[int] = None  # ID будет присваиваться после сохранения задачи
