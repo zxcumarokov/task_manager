@@ -1,6 +1,7 @@
 from .abc_encrypter import IEncrypter
 from .abc_task_storage import ITaskStorage
 from .abc_token_storage import ITockenStorage
+from .abc_token_verifier import ITokenVerifier
 from .abc_user_storage import IUserStorage
 
 __all__ = [
@@ -8,4 +9,5 @@ __all__ = [
     "IEncrypter",
     "IUserStorage",
     "ITockenStorage",
+    "ITokenVerifier",
 ]

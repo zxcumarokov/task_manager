@@ -1,21 +1,20 @@
 import logging
-from datetime import datetime
 
-import jwt
 from fastapi import APIRouter, Header, HTTPException
 
-from abs import ITaskStorage
+from abs import ITaskStorage, ITokenVerifier
 from implementations.encrypter import FernetEncrypter
 from models import Task
 
-# Настройка логирования
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
 class CreateTaskRouter:
     def __init__(
-        self, task_storage: ITaskStorage, secret_key: str, encrypter: FernetEncrypter
+        self,
+        task_storage: ITaskStorage,
+        token_verifier: ITokenVerifier,
+        encrypter: FernetEncrypter,
     ):
         self.router = APIRouter()
         self.router.add_api_route(
@@ -24,55 +23,45 @@ class CreateTaskRouter:
             methods=["POST"],
         )
         self.task_storage = task_storage
-        self.secret_key = secret_key  # Секретный ключ для проверки токенов
+        self.token_verifier = token_verifier
         self.encrypter = encrypter
 
-    def _verify_token(self, token: str):
-        try:
-            logger.debug(f"Verifying token: {token}")
-            decrypted_token = self.encrypter.decrypt(token)
-            logger.debug(f"Decrypted token: {decrypted_token}")
-            decoded_token = jwt.decode(
-                decrypted_token, self.secret_key, algorithms=["HS256"]
-            )
-            user_id = decoded_token.get("user_id")
-            exp = decoded_token.get("exp")
-            logger.debug(f"Decoded token: {decoded_token}")
-            if not user_id:
-                raise HTTPException(
-                    status_code=401, detail="User ID not found in token"
-                )
-            if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
-                raise HTTPException(
-                    status_code=401, detail="Token expired. Please refresh your token."
-                )
-            return user_id
-        except jwt.ExpiredSignatureError:
-            logger.error("Token expired")
-            raise HTTPException(
-                status_code=401, detail="Token expired. Please refresh your token."
-            )
-        except jwt.PyJWTError as e:
-            logger.error(f"JWT error: {str(e)}")
-            raise HTTPException(status_code=401, detail="Invalid token")
-        except ValueError as e:
-            logger.error(f"Decryption or token parsing failed: {str(e)}")
-            raise HTTPException(
-                status_code=400, detail="Invalid token format or decryption error"
-            )
-
     async def create_task(self, new_task: Task, x_token: str = Header(...)):
+        """
+        Создаёт новую задачу для пользователя, валидируя токен.
+
+        :param new_task: Новая задача, созданная пользователем.
+        :param x_token: Токен для авторизации.
+        :return: Информация о созданной задаче.
+        """
         logger.debug(f"Received request to create task with data: {new_task.dict()}")
 
-        user_id = self._verify_token(x_token)
+        # Проверяем токен и получаем user_id
+        try:
+            user_id = self.token_verifier.verify_token(x_token)
+            logger.debug(f"Verified user_id: {user_id}")
+        except Exception as e:
+            logger.error(f"Token verification failed: {str(e)}")
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
 
         try:
             logger.debug(f"Assigning user_id {user_id} to the task")
-            new_task.user_id = user_id
+            new_task.user_id = int(user_id)  # Преобразование строки в число
+
+            # Можно зашифровать задачу, если требуется
+            encrypted_task = self.encrypter.encrypt(
+                new_task.dict()
+            )  # Пример шифрования данных задачи
+
+            # Сохраняем задачу в хранилище
             task_id = await self.task_storage.create_task(new_task, x_token)
             new_task.id = task_id
             logger.debug(f"Task created successfully with ID: {task_id}")
+
             return {"message": "Task created successfully", "task": new_task}
+        except ValueError as e:
+            logger.error(f"Invalid user_id format: {str(e)}")
+            raise HTTPException(status_code=400, detail="Invalid user_id format")
         except Exception as e:
             logger.error(f"Error occurred during task creation: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail="Internal server error")

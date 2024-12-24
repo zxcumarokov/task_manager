@@ -15,6 +15,7 @@ dependencies = [
     "psycopg[binary]>=3.2.3",
     "pydantic>=2.9.2",
     "pyjwt>=2.10.0",
+    "pytest>=8.3.4",
     "python-gnupg>=0.5.3",
     "ruff>=0.8.0",
     "uvicorn[standard]>=0.32.0",

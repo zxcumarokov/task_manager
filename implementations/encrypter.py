@@ -5,7 +5,6 @@ from cryptography.fernet import Fernet
 
 from abs import IEncrypter
 
-# Настройка логирования
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
