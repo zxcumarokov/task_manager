@@ -3,7 +3,6 @@ import logging
 from fastapi import APIRouter, Header, HTTPException
 
 from abs import ITaskStorage, ITokenVerifier
-from implementations.encrypter import FernetEncrypter
 from models import Task
 
 logger = logging.getLogger(__name__)
@@ -14,7 +13,6 @@ class CreateTaskRouter:
         self,
         task_storage: ITaskStorage,
         token_verifier: ITokenVerifier,
-        encrypter: FernetEncrypter,
     ):
         self.router = APIRouter()
         self.router.add_api_route(
@@ -24,7 +22,6 @@ class CreateTaskRouter:
         )
         self.task_storage = task_storage
         self.token_verifier = token_verifier
-        self.encrypter = encrypter
 
     async def create_task(self, new_task: Task, x_token: str = Header(...)):
         """
@@ -47,11 +44,6 @@ class CreateTaskRouter:
         try:
             logger.debug(f"Assigning user_id {user_id} to the task")
             new_task.user_id = int(user_id)  # Преобразование строки в число
-
-            # Можно зашифровать задачу, если требуется
-            encrypted_task = self.encrypter.encrypt(
-                new_task.dict()
-            )  # Пример шифрования данных задачи
 
             # Сохраняем задачу в хранилище
             task_id = await self.task_storage.create_task(new_task, x_token)

@@ -67,7 +67,6 @@ app.include_router(
 
 app.include_router(
     CreateTaskRouter(
-        encrypter=encrypter,
         task_storage=task_storage,
         token_verifier=token_verifier,  # Передаем token_verifier
     ).router
